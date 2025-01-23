@@ -17,30 +17,50 @@ Here the example for using MyDb :
 package main
 
 import (
-    "github.com/haslok/MyDb"
-    "fmt"
+	"fmt"
+	"github.com/haslok/MyDb" // Import the MyDb package
 )
 
 func main() {
-    db := MyDb.NewDatabase("exampleDB")
-    err := db.CreateTable("users", []string{"id", "name", "email"})
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	// Create a new database
+	db := MyDb.NewDatabase("MyDB")
 
-    err = db.InsertInto("users", []string{"1", "John Doe", "john@example.com"})
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	// Create a table
+	err := db.CreateTable("Users", []string{"ID", "Name", "Age"})
+	if err != nil {
+		fmt.Println("Error creating table:", err)
+		return
+	}
 
-    err = db.Save()
-    if err != nil {
-        fmt.Println(err)
-        return
-    }
+	// Insert data into the table
+	err = db.InsertInto("Users", []string{"1", "Alice", "25"})
+	if err != nil {
+		fmt.Println("Error inserting data:", err)
+		return
+	}
 
-    fmt.Println("Database saved successfully")
+	err = db.InsertInto("Users", []string{"2", "Bob", "30"})
+	if err != nil {
+		fmt.Println("Error inserting data:", err)
+		return
+	}
+
+	// Update data in the table
+	err = db.UpdateData("Users", func(row []string) bool {
+		return row[0] == "1" // Condition: Update the row where ID is "1"
+	}, []string{"1", "Alice", "26"}) // New data
+	if err != nil {
+		fmt.Println("Error updating data:", err)
+		return
+	}
+
+	// Save the database to disk
+	err = db.Save()
+	if err != nil {
+		fmt.Println("Error saving database:", err)
+		return
+	}
+
+	fmt.Println("Database operations completed successfully!")
 }
 ```
