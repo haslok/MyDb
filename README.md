@@ -64,3 +64,15 @@ func main() {
 	fmt.Println("Database operations completed successfully!")
 }
 ```
+## Result 
+1. the files will be :
+   ```
+    MyDb (your database name /// folder)
+     |_ Users.csv (your table name /// .csv file)
+     ...
+   ```
+2. The Users.csv will be :
+   ```
+   ID,Name,Age
+   1,Alice,26
+   2,Bob,30
