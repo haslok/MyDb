@@ -8,41 +8,49 @@ import (
 	"sync"
 )
 
+// Table represents a table in the database
 type Table struct {
-	Columns []string
-	Rows    [][]string
-	mu      sync.Mutex
+	Columns []string   // Column names
+	Rows    [][]string // Rows of data
+	mu      sync.Mutex // Mutex for concurrent access
 }
 
+// Database represents a database with a collection of tables
 type Database struct {
-	Name   string
-	Tables map[string]*Table
-	mu     sync.Mutex
+	Name   string             // Name of the database
+	Tables map[string]*Table  // Map of table names to tables
+	mu     sync.Mutex         // Mutex for concurrent access
 }
 
+// NewDatabase creates a new database with the given name
 func NewDatabase(name string) *Database {
-	return &Database{Name: name, Tables: make(map[string]*Table)}
+	return &Database{
+		Name:   name,
+		Tables: make(map[string]*Table),
+	}
 }
 
-// CreateTable creates a new table in the database if it doesn't already exist
+// CreateTable creates a new table in the database
 func (db *Database) CreateTable(name string, columns []string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
+	// Validate table and column names
 	if !isValidName(name) {
-		return fmt.Errorf("Invalid table name: %s", name)
+		return fmt.Errorf("invalid table name: %s", name)
 	}
-
 	for _, col := range columns {
 		if !isValidName(col) {
-			return fmt.Errorf("Invalid column name: %s", col)
+			return fmt.Errorf("invalid column name: %s", col)
 		}
 	}
 
+	// Check if the table already exists
 	if _, exists := db.Tables[name]; exists {
-		return fmt.Errorf("Table %s already exists", name)
+		return fmt.Errorf("table %s already exists", name)
 	}
 
+	// Create the table
 	db.Tables[name] = &Table{Columns: columns}
 	return nil
 }
@@ -52,23 +60,48 @@ func (db *Database) InsertInto(tableName string, data []string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	if len(data) == 0 {
-		return fmt.Errorf("No data to insert")
-	}
-
+	// Check if the table exists
 	table, exists := db.Tables[tableName]
 	if !exists {
 		return fmt.Errorf("table %s does not exist", tableName)
 	}
 
-	if len(table.Columns) != len(data) {
+	// Validate data length
+	if len(data) != len(table.Columns) {
 		return fmt.Errorf("data length does not match number of columns")
 	}
 
+	// Lock the table and insert the row
 	table.mu.Lock()
 	defer table.mu.Unlock()
-
 	table.Rows = append(table.Rows, data)
+	return nil
+}
+
+// UpdateData updates rows in the specified table based on a condition
+func (db *Database) UpdateData(tableName string, condition func(row []string) bool, data []string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	// Check if the table exists
+	table, exists := db.Tables[tableName]
+	if !exists {
+		return fmt.Errorf("table %s does not exist", tableName)
+	}
+
+	// Validate data length
+	if len(data) != len(table.Columns) {
+		return fmt.Errorf("invalid data for table %s: expected %d columns, got %d", tableName, len(table.Columns), len(data))
+	}
+
+	// Lock the table and update matching rows
+	table.mu.Lock()
+	defer table.mu.Unlock()
+	for i, row := range table.Rows {
+		if condition(row) {
+			table.Rows[i] = data
+		}
+	}
 	return nil
 }
 
@@ -77,40 +110,34 @@ func (db *Database) Save() error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	// Create the directory for the database if it doesn't exist
-	err := os.MkdirAll(db.Name, os.ModePerm)
-	if err != nil {
+	// Create the directory for the database
+	if err := os.MkdirAll(db.Name, os.ModePerm); err != nil {
 		return fmt.Errorf("failed to create directory for database: %v", err)
 	}
 
-	// Iterate over each table and create a CSV file for it
+	// Save each table as a CSV file
 	for tableName, table := range db.Tables {
-		// Create a CSV file for the table
 		file, err := os.Create(fmt.Sprintf("%s/%s.csv", db.Name, tableName))
 		if err != nil {
 			return fmt.Errorf("failed to create CSV file for table %s: %v", tableName, err)
 		}
+		defer file.Close()
 
-		// Write the data to the CSV file
 		writer := csv.NewWriter(file)
 
-		// Write the column headers
+		// Write column headers
 		if err := writer.Write(table.Columns); err != nil {
-			file.Close()
 			return fmt.Errorf("failed to write column headers for table %s: %v", tableName, err)
 		}
 
-		// Write the rows
+		// Write rows
 		for _, row := range table.Rows {
 			if err := writer.Write(row); err != nil {
-				file.Close()
 				return fmt.Errorf("failed to write data to table %s: %v", tableName, err)
 			}
 		}
 
 		writer.Flush()
-		file.Close()
-
 		if err := writer.Error(); err != nil {
 			return fmt.Errorf("failed to flush writer for table %s: %v", tableName, err)
 		}
@@ -123,32 +150,4 @@ func (db *Database) Save() error {
 func isValidName(name string) bool {
 	validName := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 	return validName.MatchString(name)
-}
-
-// update data
-func (db *Database) UpdateData(tableName string, condation func(row []string) bool, data []string) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-	// Check if the table exists
-	table, ok := db.Tables[tableName]
-
-	if !ok {
-		return fmt.Errorf("table %s does not exist", tableName)
-	}
-
-	if len(data) != len(table.Columns) {
-		return fmt.Errorf("invalid data for table %s: expected %d columns, got %d", tableName, len(table.Columns), len(data))
-	}
-
-	table.mu.Lock()
-	defer table.mu.Unlock()
-
-	for i, row := range table.Rows {
-		if condation(row) {
-			table.Rows[i] = data
-		}
-
-	}
-
-	return nil
 }
