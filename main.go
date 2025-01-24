@@ -76,6 +76,12 @@ func (db *Database) InsertInto(tableName string, data []string) error {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 	table.Rows = append(table.Rows, data)
+	
+	err := db.Save()
+	if err != nil {
+		return fmt.Errorf("failed to autosave after insert : %v", err)
+	}
+	
 	return nil
 }
 
@@ -103,6 +109,12 @@ func (db *Database) UpdateData(tableName string, condition func(row []string) bo
 			table.Rows[i] = data
 		}
 	}
+
+	err := db.Save()
+	if err != nil {
+		return fmt.Errorf("failed to autosave after update : %v", err)
+	}
+	
 	return nil
 }
 
