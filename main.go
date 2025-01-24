@@ -1,4 +1,3 @@
-// version: 1.0.2
 package MyDb
 
 import (
@@ -6,15 +5,15 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"sync"
 	"strings"
+	"sync"
 )
 
 // Table represents a table in the database
 type Table struct {
-	Columns []string               // Column names
-	Rows    []map[string]string    // Rows of data as a map of column names to values
-	mu      sync.Mutex             // Mutex for concurrent access
+	Columns []string             // Column names
+	Rows    []map[string]string  // Rows of data as a map of column names to values
+	mu      sync.Mutex           // Mutex for concurrent access
 }
 
 // Database represents a database with a collection of tables
@@ -34,7 +33,7 @@ func NewDatabase(name string) *Database {
 
 // CreateTable creates a new table in the database
 func (db *Database) CreateTable(name string, columns []string) error {
-	db.mu.Lock()
+	db.mu.Lock() // Lock db first
 	defer db.mu.Unlock()
 
 	// Validate table and column names
@@ -52,14 +51,17 @@ func (db *Database) CreateTable(name string, columns []string) error {
 		return fmt.Errorf("table %s already exists", name)
 	}
 
-	// Create the table
-	db.Tables[name] = &Table{Columns: columns}
+	// Create the table and initialize Rows
+	db.Tables[name] = &Table{
+		Columns: columns,
+		Rows:    []map[string]string{}, // Initialize Rows
+	}
 	return nil
 }
 
 // InsertInto inserts a row of data into the specified table
 func (db *Database) InsertInto(tableName string, data map[string]string) error {
-	db.mu.Lock()
+	db.mu.Lock() // Lock db first
 	defer db.mu.Unlock()
 
 	// Check if the table exists
@@ -76,16 +78,17 @@ func (db *Database) InsertInto(tableName string, data map[string]string) error {
 	}
 
 	// Lock the table and insert the row
-	table.mu.Lock()
+	table.mu.Lock() // Lock table second
 	defer table.mu.Unlock()
+
+	// Append the new row
 	table.Rows = append(table.Rows, data)
 	return nil
 }
 
-
 // Delete removes rows from the specified table that match all the given conditions
 func (db *Database) Delete(tableName string, conditions map[string]string) error {
-	db.mu.Lock()
+	db.mu.Lock() // Lock db first
 	defer db.mu.Unlock()
 
 	// Check if the table exists
@@ -95,7 +98,7 @@ func (db *Database) Delete(tableName string, conditions map[string]string) error
 	}
 
 	// Lock the table to ensure thread safety
-	table.mu.Lock()
+	table.mu.Lock() // Lock table second
 	defer table.mu.Unlock()
 
 	// Filter rows that do not match the conditions
@@ -118,11 +121,9 @@ func (db *Database) Delete(tableName string, conditions map[string]string) error
 	return nil
 }
 
-
-
 // UpdateData updates rows in the specified table based on a condition
 func (db *Database) UpdateData(tableName string, condition func(row map[string]string) bool, data map[string]string) error {
-	db.mu.Lock()
+	db.mu.Lock() // Lock db first
 	defer db.mu.Unlock()
 
 	// Check if the table exists
@@ -139,7 +140,7 @@ func (db *Database) UpdateData(tableName string, condition func(row map[string]s
 	}
 
 	// Lock the table and update matching rows
-	table.mu.Lock()
+	table.mu.Lock() // Lock table second
 	defer table.mu.Unlock()
 	for i, row := range table.Rows {
 		if condition(row) {
@@ -155,7 +156,7 @@ func (db *Database) UpdateData(tableName string, condition func(row map[string]s
 
 // SearchRows searches for rows in the specified table based on a condition
 func (db *Database) SearchRows(tableName string, condition func(row map[string]string) bool) ([]map[string]string, error) {
-	db.mu.Lock()
+	db.mu.Lock() // Lock db first
 	defer db.mu.Unlock()
 
 	// Check if the table exists
@@ -165,7 +166,7 @@ func (db *Database) SearchRows(tableName string, condition func(row map[string]s
 	}
 
 	// Lock the table and search for rows matching the condition
-	table.mu.Lock()
+	table.mu.Lock() // Lock table second
 	defer table.mu.Unlock()
 
 	var results []map[string]string
@@ -219,7 +220,7 @@ func (db *Database) SelectTable(tableName string) (*Table, error) {
 
 // Save saves the database to a directory and creates a CSV file for each table
 func (db *Database) Save() error {
-	db.mu.Lock()
+	db.mu.Lock() // Lock db first
 	defer db.mu.Unlock()
 
 	// Ensure the database directory exists
@@ -276,10 +277,9 @@ func contains(slice []string, str string) bool {
 	return false
 }
 
-//execute command
 // MyDb executes SQL-like commands for the database
 func (db *Database) Command(command string) error {
-	db.mu.Lock()
+	db.mu.Lock() // Lock db first
 	defer db.mu.Unlock()
 
 	// Remove unnecessary spaces
@@ -334,59 +334,37 @@ func (db *Database) Command(command string) error {
 		fmt.Println("Results:", rows)
 		return nil
 
-	case "insert":
-		// Example: INSERT INTO users 1, ahmad, 55
-		matches := regexp.MustCompile(`insert to (\w+) (.+)`).FindStringSubmatch(strings.ToLower(command))
-		if len(matches) != 3 {
-			return fmt.Errorf("invalid INSERT command: %s", command)
-		}
-		tableName := matches[1]
-		values := strings.Split(matches[2], ",")
-		valuesMap := make(map[string]string)
-		if table, exists := db.Tables[tableName]; exists {
-			if len(values) != len(table.Columns) {
-				return fmt.Errorf("number of values does not match columns in table %s", tableName)
-			}
-			for i, col := range table.Columns {
-				valuesMap[col] = strings.TrimSpace(values[i])
-			}
-		} else {
-			return fmt.Errorf("table %s does not exist", tableName)
-		}
-		return db.InsertInto(tableName, valuesMap)
-
 	case "create":
-		// Example: CREATE TABLE users has id, name, age
-		matches := regexp.MustCompile(`create table (\w+) has (.+)`).FindStringSubmatch(strings.ToLower(command))
+		// Example: CREATE TABLE users (id INT, name VARCHAR(50), age INT)
+		matches := regexp.MustCompile(`create table (\w+) \((.*)\)`).FindStringSubmatch(strings.ToLower(command))
 		if len(matches) != 3 {
 			return fmt.Errorf("invalid CREATE command: %s", command)
 		}
 		tableName := matches[1]
 		columns := strings.Split(matches[2], ",")
-		for i := range columns {
-			columns[i] = strings.TrimSpace(columns[i])
+		for i, col := range columns {
+			columns[i] = strings.TrimSpace(col)
 		}
 		return db.CreateTable(tableName, columns)
 
 	default:
-		return fmt.Errorf("unknown command: %s", command)
+		return fmt.Errorf("unknown command: %s", action)
 	}
 }
 
-// Helper function to parse conditions
-func parseConditions(conditionStr string) map[string]string {
+func parseConditions(input string) map[string]string {
 	conditions := make(map[string]string)
-	pairs := strings.Split(conditionStr, " and ")
-	for _, pair := range pairs {
-		kv := strings.SplitN(pair, "=", 2)
-		if len(kv) == 2 {
-			conditions[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+	parts := strings.Split(input, ",")
+	for _, part := range parts {
+		condParts := strings.Split(part, "=")
+		if len(condParts) != 2 {
+			continue
 		}
+		conditions[strings.TrimSpace(condParts[0])] = strings.TrimSpace(condParts[1])
 	}
 	return conditions
 }
 
-// Helper function to match conditions against a row
 func matchConditions(row map[string]string, conditions map[string]string) bool {
 	for key, value := range conditions {
 		if row[key] != value {
