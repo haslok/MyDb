@@ -106,6 +106,17 @@ func (db *Database) UpdateData(tableName string, condition func(row []string) bo
 	return nil
 }
 
+func (db *Database) Select(tablename string) (*Table, error){
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	// Check if the table exists
+	table, exists := db.Tables[tablename]
+	if !exists {
+		return nil, fmt.Errorf("table %s is not exixt ", tablename)
+	}
+	return table, nil
+}
+
 // Save saves the database to a directory and creates a CSV file for each table
 func (db *Database) Save() error {
 	db.mu.Lock()
