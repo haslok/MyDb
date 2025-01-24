@@ -106,7 +106,7 @@ func (db *Database) UpdateData(tableName string, condition func(row []string) bo
 	return nil
 }
 
-func (db *Database) Select(tablename string) (*Table, error) {
+func (db *Database) SelectTable(tablename string) (*Table, error) {
     db.mu.Lock()
     defer db.mu.Unlock()
     // Check if the table exists
