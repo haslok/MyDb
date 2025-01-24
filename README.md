@@ -79,9 +79,14 @@ func main() {
      |_ Users.csv (your table name /// .csv file)
      ...
    ```
-2. The Users.csv will be :
+2. The test code result will be :
    ```
       Table:
     [id name age]
     [1 Alice 30]
     [2 Bob 26]
+3. the users.csv file will be :
+   ```
+   id,name,age
+   1,Alice,30
+   2,Bob,26
