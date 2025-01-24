@@ -109,7 +109,7 @@ func (db *Database) UpdateData(tableName string, condition func(row []string) bo
 
 func (db *Database) Select(tableName string) (*Table, error){
 	// select from tablename.csv file
-	file, err := os.Open(fmt.Sprintf("%s.csv", tableName))
+	file, err := os.Open(fmt.Sprintf("%s/%s.csv",db.Name, tableName))
 
 	if err != nil {
 		return nil, err
