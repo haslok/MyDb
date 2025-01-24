@@ -279,34 +279,45 @@ func contains(slice []string, str string) bool {
 
 // MyDb executes SQL-like commands for the database
 func (db *Database) Command(command string) error {
-	db.mu.Lock() // Lock db first
+	db.mu.Lock()
 	defer db.mu.Unlock()
 
-	// Remove unnecessary spaces
-	command = regexp.MustCompile(`\s+`).ReplaceAllString(command, " ")
-	command = strings.TrimSpace(command)
+	command = strings.TrimSpace(strings.ToLower(command))
 
-	// Command parsing
-	parts := strings.SplitN(command, " ", 2)
-	if len(parts) < 2 {
-		return fmt.Errorf("invalid command: %s", command)
-	}
-
-	action := strings.ToLower(parts[0])
-	switch action {
-	case "delete":
-		// Example: DELETE FROM users WHERE name = ahmad
-		matches := regexp.MustCompile(`delete from (\w+) where (.+)`).FindStringSubmatch(strings.ToLower(command))
+	if strings.HasPrefix(command, "create table") {
+		// Handle CREATE TABLE with "HAS"
+		matches := regexp.MustCompile(`create table (\w+) has (.+)`).FindStringSubmatch(command)
 		if len(matches) != 3 {
-			return fmt.Errorf("invalid DELETE command: %s", command)
+			return fmt.Errorf("invalid CREATE TABLE command: %s", command)
 		}
 		tableName := matches[1]
-		conditions := parseConditions(matches[2])
-		return db.Delete(tableName, conditions)
+		columns := strings.Split(matches[2], ",")
+		for i := range columns {
+			columns[i] = strings.TrimSpace(columns[i])
+		}
+		return db.CreateTable(tableName, columns)
 
-	case "update":
-		// Example: UPDATE users SET name = ahmad WHERE id = 1
-		matches := regexp.MustCompile(`update (\w+) set (.+) where (.+)`).FindStringSubmatch(strings.ToLower(command))
+	} else if strings.HasPrefix(command, "insert to") {
+		// Handle INSERT
+		matches := regexp.MustCompile(`insert to (\w+) (.+)`).FindStringSubmatch(command)
+		if len(matches) != 3 {
+			return fmt.Errorf("invalid INSERT command: %s", command)
+		}
+		tableName := matches[1]
+		values := strings.Split(matches[2], ",")
+		columns := db.Tables[tableName].Columns
+		if len(values) != len(columns) {
+			return fmt.Errorf("mismatch between columns and values in table %s", tableName)
+		}
+		data := make(map[string]string)
+		for i, col := range columns {
+			data[col] = strings.TrimSpace(values[i])
+		}
+		return db.InsertInto(tableName, data)
+
+	} else if strings.HasPrefix(command, "update") {
+		// Handle UPDATE
+		matches := regexp.MustCompile(`update (\w+) set (.+) where (.+)`).FindStringSubmatch(command)
 		if len(matches) != 4 {
 			return fmt.Errorf("invalid UPDATE command: %s", command)
 		}
@@ -317,9 +328,9 @@ func (db *Database) Command(command string) error {
 			return matchConditions(row, conditions)
 		}, data)
 
-	case "get", "select":
-		// Example: GET FROM users WHERE name = ahmad
-		matches := regexp.MustCompile(`get from (\w+) where (.+)`).FindStringSubmatch(strings.ToLower(command))
+	} else if strings.HasPrefix(command, "get from") {
+		// Handle GET
+		matches := regexp.MustCompile(`get from (\w+) where (.+)`).FindStringSubmatch(command)
 		if len(matches) != 3 {
 			return fmt.Errorf("invalid GET command: %s", command)
 		}
@@ -334,21 +345,18 @@ func (db *Database) Command(command string) error {
 		fmt.Println("Results:", rows)
 		return nil
 
-	case "create":
-		// Example: CREATE TABLE users (id INT, name VARCHAR(50), age INT)
-		matches := regexp.MustCompile(`create table (\w+) \((.*)\)`).FindStringSubmatch(strings.ToLower(command))
+	} else if strings.HasPrefix(command, "delete from") {
+		// Handle DELETE
+		matches := regexp.MustCompile(`delete from (\w+) where (.+)`).FindStringSubmatch(command)
 		if len(matches) != 3 {
-			return fmt.Errorf("invalid CREATE command: %s", command)
+			return fmt.Errorf("invalid DELETE command: %s", command)
 		}
 		tableName := matches[1]
-		columns := strings.Split(matches[2], ",")
-		for i, col := range columns {
-			columns[i] = strings.TrimSpace(col)
-		}
-		return db.CreateTable(tableName, columns)
+		conditions := parseConditions(matches[2])
+		return db.Delete(tableName, conditions)
 
-	default:
-		return fmt.Errorf("unknown command: %s", action)
+	} else {
+		return fmt.Errorf("unknown command: %s", command)
 	}
 }
 
