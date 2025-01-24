@@ -81,6 +81,7 @@ func main() {
    ```
 2. The Users.csv will be :
    ```
-   ID,Name,Age
-   1,Alice,26
-   2,Bob,30
+Table:
+ [id name age]
+[1 Alice 30]
+[2 Bob 26]
