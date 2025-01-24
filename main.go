@@ -53,6 +53,13 @@ func (db *Database) CreateTable(name string, columns []string) error {
 
 	// Create the table
 	db.Tables[name] = &Table{Columns: columns}
+
+	// Autosave after creating a table
+	err := db.Save()
+	if err != nil {
+		return fmt.Errorf("failed to autosave after create table: %v", err)
+	}
+
 	return nil
 }
 
@@ -76,12 +83,13 @@ func (db *Database) InsertInto(tableName string, data []string) error {
 	table.mu.Lock()
 	defer table.mu.Unlock()
 	table.Rows = append(table.Rows, data)
-	
+
+	// Autosave after insertion
 	err := db.Save()
 	if err != nil {
-		return fmt.Errorf("failed to autosave after insert : %v", err)
+		return fmt.Errorf("failed to autosave after insert: %v", err)
 	}
-	
+
 	return nil
 }
 
@@ -110,26 +118,27 @@ func (db *Database) UpdateData(tableName string, condition func(row []string) bo
 		}
 	}
 
+	// Autosave after update
 	err := db.Save()
 	if err != nil {
-		return fmt.Errorf("failed to autosave after update : %v", err)
+		return fmt.Errorf("failed to autosave after update: %v", err)
 	}
-	
+
 	return nil
 }
 
-
-func (db *Database) SelectTable(tableName string) (*Table, error){
+func (db *Database) SelectTable(tableName string) (*Table, error) {
 	// select from tablename.csv file
-	file, err := os.Open(fmt.Sprintf("%s/%s.csv",db.Name, tableName))
+	file, err := os.Open(fmt.Sprintf("%s/%s.csv", db.Name, tableName))
 
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
+
 	// read csv file
 	reader := csv.NewReader(file)
-	
+
 	columns, err := reader.Read()
 	if err != nil {
 		return nil, err
@@ -147,10 +156,7 @@ func (db *Database) SelectTable(tableName string) (*Table, error){
 	table.Rows = rows
 
 	return table, nil
-
 }
-
-
 
 // Save saves the database to a directory and creates a CSV file for each table
 func (db *Database) Save() error {
