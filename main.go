@@ -106,16 +106,38 @@ func (db *Database) UpdateData(tableName string, condition func(row []string) bo
 	return nil
 }
 
-func (db *Database) SelectTable(tablename string) (*Table, error) {
-    db.mu.Lock()
-    defer db.mu.Unlock()
-    // Check if the table exists
-    table, exists := db.Tables[tablename]
-    if !exists {
-        return nil, fmt.Errorf("table %s does not exist", tablename)  // Corrected "is not exixt" to "does not exist"
-    }
-    return table, nil
+
+func (db *Database) Select(tableName string) (*Table, error){
+	// select from tablename.csv file
+	file, err := os.Open(fmt.Sprintf("%s.csv", tableName))
+
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	// read csv file
+	reader := csv.NewReader(file)
+	
+	columns, err := reader.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	table := &Table{
+		Columns: columns,
+	}
+
+	rows, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	table.Rows = rows
+
+	return table, nil
+
 }
+
 
 
 // Save saves the database to a directory and creates a CSV file for each table
