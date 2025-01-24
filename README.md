@@ -14,55 +14,63 @@ go get github.com/haslok/MyDb
 ## Usage 
 Here the example for using MyDb :
 ```go
+ // Import the MyDb package
 package main
 
 import (
 	"fmt"
-	"github.com/haslok/MyDb" // Import the MyDb package
+	"log"
+	"github.com/haslok/MyDb"
 )
 
 func main() {
-	// Create a new database
-	db := MyDb.NewDatabase("MyDB")
+	// Step 1: Create a new database
+	db := MyDb.NewDatabase("MyTestDB")
 
-	// Create a table
-	err := db.CreateTable("Users", []string{"ID", "Name", "Age"})
+	// Step 2: Create a new table
+	err := db.CreateTable("users", []string{"id", "name", "age"})
 	if err != nil {
-		fmt.Println("Error creating table:", err)
-		return
+		log.Fatal("Error creating table:", err)
 	}
 
-	// Insert data into the table
-	err = db.InsertInto("Users", []string{"1", "Alice", "25"})
+	// Step 3: Insert data into the "users" table
+	err = db.InsertInto("users", []string{"1", "Alice", "30"})
 	if err != nil {
-		fmt.Println("Error inserting data:", err)
-		return
+		log.Fatal("Error inserting row:", err)
 	}
 
-	err = db.InsertInto("Users", []string{"2", "Bob", "30"})
+	err = db.InsertInto("users", []string{"2", "Bob", "25"})
 	if err != nil {
-		fmt.Println("Error inserting data:", err)
-		return
+		log.Fatal("Error inserting row:", err)
 	}
 
-	// Update data in the table
-	err = db.UpdateData("Users", func(row []string) bool {
-		return row[0] == "1" // Condition: Update the row where ID is "1"
-	}, []string{"1", "Alice", "26"}) // New data
+	// Step 4: Update data in the "users" table (for example, change Bob's age)
+	err = db.UpdateData("users", func(row []string) bool {
+		return row[1] == "Bob"  // condition: row's name is "Bob"
+	}, []string{"2", "Bob", "26"})  // new data for Bob
 	if err != nil {
-		fmt.Println("Error updating data:", err)
-		return
+		log.Fatal("Error updating data:", err)
 	}
 
-	// Save the database to disk
+	// Step 5: Save the database (it will create a directory and CSV files)
 	err = db.Save()
 	if err != nil {
-		fmt.Println("Error saving database:", err)
-		return
+		log.Fatal("Error saving database:", err)
 	}
 
-	fmt.Println("Database operations completed successfully!")
+	// Step 6: Load a table from the saved CSV file
+	table, err := db.SelectTable("users")
+	if err != nil {
+		log.Fatal("Error selecting table:", err)
+	}
+
+	// Print the table's data
+	fmt.Println("Table:\n", table.Columns)
+	for _, row := range table.Rows {
+		fmt.Println(row)
+	}
 }
+
 ```
 ## Result 
 1. the files will be :
