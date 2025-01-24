@@ -278,7 +278,7 @@ func contains(slice []string, str string) bool {
 
 //execute command
 // MyDb executes SQL-like commands for the database
-func (db *Database) MyDb(command string) error {
+func (db *Database) Command(command string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 
