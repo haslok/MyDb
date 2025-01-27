@@ -24,51 +24,59 @@ import (
 )
 
 func main() {
-	// Step 1: Create a new database
-	db := MyDb.NewDatabase("MyTestDB")
+	db := NewDatabase("my_database") // Create a new database
 
-	// Step 2: Create a new table
-	err := db.CreateTable("users", []string{"id", "name", "age"})
+	// 1. Create a table
+	err := db.Command("CREATE TABLE users HAS name, age, city")
 	if err != nil {
-		log.Fatal("Error creating table:", err)
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Table 'users' created successfully!")
+
+	// 2. Insert data into the table
+	err = db.Command("INSERT TO users ahmad, 23, cairo")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	err = db.Command("INSERT TO users lila, 30, alexandria")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Data inserted successfully!")
+
+	// 3. Get data from the table
+	err = db.Command("GET FROM users WHERE age=23")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
 	}
 
-	// Step 3: Insert data into the "users" table
-	err = db.InsertInto("users", []string{"1", "Alice", "30"})
+	// 4. Update data in the table
+	err = db.Command("UPDATE users SET city=giza WHERE name=ahmad")
 	if err != nil {
-		log.Fatal("Error inserting row:", err)
+		fmt.Println("Error:", err)
+		return
 	}
+	fmt.Println("Data updated successfully!")
 
-	err = db.InsertInto("users", []string{"2", "Bob", "25"})
+	// 5. Delete data from the table
+	err = db.Command("DELETE FROM users WHERE name=lila")
 	if err != nil {
-		log.Fatal("Error inserting row:", err)
+		fmt.Println("Error:", err)
+		return
 	}
+	fmt.Println("Data deleted successfully!")
 
-	// Step 4: Update data in the "users" table (for example, change Bob's age)
-	err = db.UpdateData("users", func(row []string) bool {
-		return row[1] == "Bob"  // condition: row's name is "Bob"
-	}, []string{"2", "Bob", "26"})  // new data for Bob
-	if err != nil {
-		log.Fatal("Error updating data:", err)
-	}
-
-	// Step 5: Save the database (it will create a directory and CSV files)
+	// 6. Save the database to disk
 	err = db.Save()
 	if err != nil {
-		log.Fatal("Error saving database:", err)
+		fmt.Println("Error saving the database:", err)
+		return
 	}
-
-	// Step 6: Load a table from the saved CSV file
-	table, err := db.SelectTable("users")
-	if err != nil {
-		log.Fatal("Error selecting table:", err)
-	}
-
-	// Print the table's data
-	fmt.Println("Table:\n", table.Columns)
-	for _, row := range table.Rows {
-		fmt.Println(row)
-	}
+	fmt.Println("Database saved successfully!")
 }
 
 ```
@@ -81,10 +89,12 @@ func main() {
    ```
 2. The test code result will be :
    ```
-      Table:
-    [id name age]
-    [1 Alice 30]
-    [2 Bob 26]
+      Table 'users' created successfully!
+       Data inserted successfully!
+       Results: [map[age:23 city:cairo name:ahmad]]
+       Data updated successfully!
+       Data deleted successfully!
+       Database saved successfully!
 3. the users.csv file will be :
    ```
    id,name,age
