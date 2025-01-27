@@ -280,8 +280,7 @@ func contains(slice []string, str string) bool {
 // MyDb executes SQL-like commands for the database
 // MyDb executes SQL-like commands for the database
 func (db *Database) Command(command string) error {
-    db.mu.Lock()
-    defer db.mu.Unlock()
+    
 
     command = strings.TrimSpace(strings.ToLower(command))
 
