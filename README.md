@@ -74,14 +74,9 @@ func main() {
    ```
 2. The test code result will be :
    ```
-      Table 'users' created successfully!
-       Data inserted successfully!
-       Results: [map[age:23 city:cairo name:ahmad]]
-       Data updated successfully!
-       Data deleted successfully!
-       Database saved successfully!
+      Results: [map[email:john@example.com id:1 name:john doe]]         Commands executed successfully
+   
 3. the users.csv file will be :
    ```
-   id,name,age
-   1,Alice,30
-   2,Bob,26
+   id,name,email
+   1,jonn,jonn@eg.com
