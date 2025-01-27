@@ -14,69 +14,54 @@ go get github.com/haslok/MyDb
 ## Usage 
 Here the example for using MyDb :
 ```go
- // Import the MyDb package
 package main
 
 import (
-	"fmt"
-	"log"
-	"github.com/haslok/MyDb"
+    "fmt"
+    "github.com/haslok/MyDb"
 )
 
 func main() {
-	db := NewDatabase("my_database") // Create a new database
+    // Create a new database
+    db := MyDb.NewDatabase("example_db")
 
-	// 1. Create a table
-	err := db.Command("CREATE TABLE users HAS name, age, city")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	fmt.Println("Table 'users' created successfully!")
+    // Execute a CREATE TABLE command
+    err := db.Command("create table users has id, name, email")
+    if err != nil {
+        fmt.Println("Error creating table:", err)
+        return
+    }
 
-	// 2. Insert data into the table
-	err = db.Command("INSERT TO users ahmad, 23, cairo")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	err = db.Command("INSERT TO users lila, 30, alexandria")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	fmt.Println("Data inserted successfully!")
+    // Execute an INSERT command
+    err = db.Command("insert to users 1, John Doe, john@example.com")
+    if err != nil {
+        fmt.Println("Error inserting row:", err)
+        return
+    }
 
-	// 3. Get data from the table
-	err = db.Command("GET FROM users WHERE age=23")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
+    // Execute a GET command
+    err = db.Command("get from users where id=1")
+    if err != nil {
+        fmt.Println("Error getting rows:", err)
+        return
+    }
 
-	// 4. Update data in the table
-	err = db.Command("UPDATE users SET city=giza WHERE name=ahmad")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	fmt.Println("Data updated successfully!")
+    // Execute an UPDATE command
+    err = db.Command("update users set email=john.doe@example.com where id=1")
+    if err != nil {
+        fmt.Println("Error updating row:", err)
+        return
+    }
 
-	// 5. Delete data from the table
-	err = db.Command("DELETE FROM users WHERE name=lila")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	fmt.Println("Data deleted successfully!")
+    // Execute a DELETE command
+    err = db.Command("delete from users where id=1")
+    if err != nil {
+        fmt.Println("Error deleting row:", err)
+        return
+    }
 
-	// 6. Save the database to disk
-	err = db.Save()
-	if err != nil {
-		fmt.Println("Error saving the database:", err)
-		return
-	}
-	fmt.Println("Database saved successfully!")
+    db.Save()
+    fmt.Println("Commands executed successfully")
 }
 
 ```
