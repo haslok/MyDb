@@ -277,87 +277,87 @@ func contains(slice []string, str string) bool {
 	return false
 }
 
-// MyDb executes SQL-like commands for the database
-// MyDb executes SQL-like commands for the database
-func (db *Database) Command(command string) error {
-    
+// Command executes SQL-like commands for the database
+func (db *Database) Command(command string) ([]map[string]string, error) {
+	command = strings.TrimSpace(strings.ToLower(command))
 
-    command = strings.TrimSpace(strings.ToLower(command))
+	if strings.HasPrefix(command, "create table") {
+		// Handle CREATE TABLE with "HAS"
+		matches := regexp.MustCompile(`create table (\w+) has (.+)`).FindStringSubmatch(command)
+		if len(matches) != 3 {
+			return nil, fmt.Errorf("invalid CREATE TABLE command: %s", command)
+		}
+		tableName := matches[1]
+		columns := strings.Split(matches[2], ",")
+		for i := range columns {
+			columns[i] = strings.TrimSpace(columns[i])
+		}
+		return nil, db.CreateTable(tableName, columns)
 
-    if strings.HasPrefix(command, "create table") {
-        // Handle CREATE TABLE with "HAS"
-        matches := regexp.MustCompile(`create table (\w+) has (.+)`).FindStringSubmatch(command)
-        if len(matches) != 3 {
-            return fmt.Errorf("invalid CREATE TABLE command: %s", command)
-        }
-        tableName := matches[1]
-        columns := strings.Split(matches[2], ",")
-        for i := range columns {
-            columns[i] = strings.TrimSpace(columns[i])
-        }
-        return db.CreateTable(tableName, columns)
+	} else if strings.HasPrefix(command, "insert to") {
+		// Handle INSERT
+		matches := regexp.MustCompile(`insert to (\w+) (.+)`).FindStringSubmatch(command)
+		if len(matches) != 3 {
+			return nil, fmt.Errorf("invalid INSERT command: %s", command)
+		}
+		tableName := matches[1]
+		values := strings.Split(matches[2], ",")
+		table, exists := db.Tables[tableName]
+		if !exists {
+			return nil, fmt.Errorf("table %s does not exist", tableName)
+		}
+		columns := table.Columns
+		if len(values) != len(columns) {
+			return nil, fmt.Errorf("mismatch between columns and values in table %s", tableName)
+		}
+		data := make(map[string]string)
+		for i, col := range columns {
+			data[col] = strings.TrimSpace(values[i])
+		}
+		return nil, db.InsertInto(tableName, data)
 
-    } else if strings.HasPrefix(command, "insert to") {
-        // Handle INSERT
-        matches := regexp.MustCompile(`insert to (\w+) (.+)`).FindStringSubmatch(command)
-        if len(matches) != 3 {
-            return fmt.Errorf("invalid INSERT command: %s", command)
-        }
-        tableName := matches[1]
-        values := strings.Split(matches[2], ",")
-        columns := db.Tables[tableName].Columns
-        if len(values) != len(columns) {
-            return fmt.Errorf("mismatch between columns and values in table %s", tableName)
-        }
-        data := make(map[string]string)
-        for i, col := range columns {
-            data[col] = strings.TrimSpace(values[i])
-        }
-        return db.InsertInto(tableName, data)
+	} else if strings.HasPrefix(command, "update") {
+		// Handle UPDATE
+		matches := regexp.MustCompile(`update (\w+) set (.+) where (.+)`).FindStringSubmatch(command)
+		if len(matches) != 4 {
+			return nil, fmt.Errorf("invalid UPDATE command: %s", command)
+		}
+		tableName := matches[1]
+		data := parseConditions(matches[2])
+		conditions := parseConditions(matches[3])
+		return nil, db.UpdateData(tableName, func(row map[string]string) bool {
+			return matchConditions(row, conditions)
+		}, data)
 
-    } else if strings.HasPrefix(command, "update") {
-        // Handle UPDATE
-        matches := regexp.MustCompile(`update (\w+) set (.+) where (.+)`).FindStringSubmatch(command)
-        if len(matches) != 4 {
-            return fmt.Errorf("invalid UPDATE command: %s", command)
-        }
-        tableName := matches[1]
-        data := parseConditions(matches[2])
-        conditions := parseConditions(matches[3])
-        return db.UpdateData(tableName, func(row map[string]string) bool {
-            return matchConditions(row, conditions)
-        }, data)
+	} else if strings.HasPrefix(command, "get from") {
+		// Handle GET
+		matches := regexp.MustCompile(`get from (\w+) where (.+)`).FindStringSubmatch(command)
+		if len(matches) != 3 {
+			return nil, fmt.Errorf("invalid GET command: %s", command)
+		}
+		tableName := matches[1]
+		conditions := parseConditions(matches[2])
+		rows, err := db.SearchRows(tableName, func(row map[string]string) bool {
+			return matchConditions(row, conditions)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return rows, nil
 
-    } else if strings.HasPrefix(command, "get from") {
-        // Handle GET
-        matches := regexp.MustCompile(`get from (\w+) where (.+)`).FindStringSubmatch(command)
-        if len(matches) != 3 {
-            return fmt.Errorf("invalid GET command: %s", command)
-        }
-        tableName := matches[1]
-        conditions := parseConditions(matches[2])
-        rows, err := db.SearchRows(tableName, func(row map[string]string) bool {
-            return matchConditions(row, conditions)
-        })
-        if err != nil {
-            return err
-        }
-        fmt.Println("Results:", rows)
-        return nil
+	} else if strings.HasPrefix(command, "delete from") {
+		// Handle DELETE
+		matches := regexp.MustCompile(`delete from (\w+) where (.+)`).FindStringSubmatch(command)
+		if len(matches) != 3 {
+			return nil, fmt.Errorf("invalid DELETE command: %s", command)
+		}
+		tableName := matches[1]
+		conditions := parseConditions(matches[2])
+		return nil, db.Delete(tableName, conditions)
 
-    } else if strings.HasPrefix(command, "delete from") {
-        // Handle DELETE
-        matches := regexp.MustCompile(`delete from (\w+) where (.+)`).FindStringSubmatch(command)
-        if len(matches) != 3 {
-            return fmt.Errorf("invalid DELETE command: %s", command)
-        }
-        tableName := matches[1]
-        conditions := parseConditions(matches[2])
-        return db.Delete(tableName, conditions)
-
-    } else {
-        return fmt.Errorf("unknown command: %s", command)
-    }
+	} else {
+		return nil, fmt.Errorf("unknown command: %s", command)
+	}
 }
 
 func parseConditions(input string) map[string]string {
