@@ -26,24 +26,30 @@ func main() {
     db := MyDb.NewDatabase("example_db")
 
     // Execute a CREATE TABLE command
-    err := db.Command("create table users has id, name, email")
+    _, err := db.Command("create table users has id, name, email")
     if err != nil {
         fmt.Println("Error creating table:", err)
         return
     }
 
     // Execute an INSERT command
-    err = db.Command("insert to users 1, John Doe, john@example.com")
+    _, err = db.Command("insert to users 1, John Doe, john@example.com")
     if err != nil {
         fmt.Println("Error inserting row:", err)
         return
     }
 
     // Execute a GET command
-    err = db.Command("get from users where id=1")
+    var data []map[string]string
+    data, err = db.Command("get from users where id=1")
     if err != nil {
         fmt.Println("Error getting rows:", err)
         return
+    }
+    for _, row := range data {
+        for key, value = range row {
+            fmt.Printf("%s: %s\n", key, value)
+        }
     }
 
     // Execute an UPDATE command
@@ -72,11 +78,7 @@ func main() {
      |_ Users.csv (your table name /// .csv file)
      ...
    ```
-2. The test code result will be :
-   ```
-      Results: [map[email:john@example.com id:1 name:john doe]]         Commands executed successfully
-   
-3. the users.csv file will be :
+2. the users.csv file will be :
    ```
    id,name,email
    1,jonn,jonn@eg.com
